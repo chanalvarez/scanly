@@ -8,12 +8,17 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Scanly — Inventory Manager",
-  description: "Professional mobile-first inventory management with QR scanning",
+  description: "Professional mobile-first inventory management with barcode scanning",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Scanly",
+    startupImage: "/icons/icon-512.png",
+  },
+  icons: {
+    apple: "/icons/icon-192.png",
+    icon: "/icons/icon-512.png",
   },
 };
 

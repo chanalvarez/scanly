@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "Scanly — Inventory Manager",
   "short_name": "Scanly",
-  "description": "Professional mobile-first inventory management with QR scanning",
+  "description": "Professional mobile-first inventory management with barcode scanning",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
@@ -12,21 +14,33 @@
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": ["business", "productivity"],
   "shortcuts": [
     {
-      "name": "Scan QR Code",
+      "name": "Scan Barcode",
       "url": "/scan",
-      "description": "Open the QR scanner"
+      "description": "Open the barcode scanner"
     },
     {
       "name": "Dashboard",

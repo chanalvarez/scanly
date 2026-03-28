@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { InstallPrompt } from "@/components/layout/InstallPrompt";
 import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -42,6 +43,7 @@ export default function RootLayout({
           <main className="pb-16">{children}</main>
           <BottomNav />
         </div>
+        <InstallPrompt />
         <Toaster
           position="top-center"
           toastOptions={{

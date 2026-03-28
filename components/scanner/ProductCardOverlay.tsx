@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useSettings } from "@/lib/use-settings";
 import type { InventoryItem } from "@/types/inventory";
 
 interface ProductCardOverlayProps {
@@ -22,6 +23,8 @@ export function ProductCardOverlay({
   onStockChange,
 }: ProductCardOverlayProps) {
   const [updating, setUpdating] = useState(false);
+  const { settings } = useSettings();
+  const threshold = settings.lowStockThreshold;
 
   const updateStock = async (delta: number) => {
     if (!item) return;
@@ -100,16 +103,16 @@ export function ProductCardOverlay({
                     <p className="text-xl font-bold">${item.price.toFixed(2)}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {item.stock_count < 5 && (
+                    {item.stock_count < threshold && (
                       <Badge variant="destructive">Low Stock</Badge>
                     )}
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">In Stock</p>
                       <p
                         className={`text-xl font-bold tabular-nums ${
-                          item.stock_count < 5
+                          item.stock_count < threshold
                             ? "text-red-400"
-                            : item.stock_count < 10
+                            : item.stock_count < threshold * 2
                             ? "text-amber-400"
                             : "text-emerald-400"
                         }`}

@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { InventoryList } from "@/components/dashboard/InventoryList";
 import type { InventoryItem } from "@/types/inventory";
-import { AlertCircle, Terminal } from "lucide-react";
+import { Terminal } from "lucide-react";
 
 async function getInventory(): Promise<InventoryItem[]> {
   if (!isSupabaseConfigured) return [];
@@ -26,48 +26,8 @@ export default async function DashboardPage() {
 
   const items = await getInventory();
 
-  const lowStockCount = items.filter((i) => i.stock_count < 5).length;
-
   return (
     <div className="flex flex-col gap-4 px-4 pt-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {items.length} {items.length === 1 ? "product" : "products"} total
-          </p>
-        </div>
-        {lowStockCount > 0 && (
-          <div className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400">
-            <AlertCircle className="h-3.5 w-3.5" />
-            {lowStockCount} low stock
-          </div>
-        )}
-      </div>
-
-      {/* Stats row */}
-      {items.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          <StatCard
-            label="Total Items"
-            value={items.length.toString()}
-          />
-          <StatCard
-            label="Total Value"
-            value={`$${items
-              .reduce((sum, i) => sum + i.price * i.stock_count, 0)
-              .toFixed(0)}`}
-          />
-          <StatCard
-            label="Low Stock"
-            value={lowStockCount.toString()}
-            danger={lowStockCount > 0}
-          />
-        </div>
-      )}
-
-      {/* Inventory list with search and add */}
       <InventoryList initialItems={items} />
     </div>
   );
@@ -105,27 +65,3 @@ function SetupPrompt() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  danger,
-}: {
-  label: string;
-  value: string;
-  danger?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-0.5 rounded-lg border border-border bg-card p-3">
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={`text-lg font-bold tabular-nums ${
-          danger ? "text-red-400" : "text-foreground"
-        }`}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}

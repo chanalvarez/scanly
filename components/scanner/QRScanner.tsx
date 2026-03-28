@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { ScanSuccessAnimation } from "@/components/scanner/ScanSuccessAnimation";
 import { ProductCardOverlay } from "@/components/scanner/ProductCardOverlay";
 import { Loader2, CameraOff } from "lucide-react";
+import { useSettings, SCAN_SPEED_FPS } from "@/lib/use-settings";
 import type { InventoryItem } from "@/types/inventory";
 
 const SCANNER_ID = "html5qr-scanner";
@@ -16,6 +17,7 @@ export function QRScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { settings } = useSettings();
 
   const [isStarted, setIsStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -26,7 +28,6 @@ export function QRScanner() {
     if (lastScannedRef.current === decodedText) return;
     lastScannedRef.current = decodedText;
 
-    // Reset debounce
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
       lastScannedRef.current = null;
@@ -51,6 +52,8 @@ export function QRScanner() {
   useEffect(() => {
     const scanner = new Html5Qrcode(SCANNER_ID);
     scannerRef.current = scanner;
+    const fps = SCAN_SPEED_FPS[settings.scanSpeed];
+    const preferFront = settings.preferFrontCamera;
 
     Html5Qrcode.getCameras()
       .then((devices) => {
@@ -59,18 +62,26 @@ export function QRScanner() {
           return;
         }
 
-        // Prefer back camera
-        const backCamera =
-          devices.find((d) =>
-            d.label.toLowerCase().includes("back") ||
-            d.label.toLowerCase().includes("rear") ||
-            d.label.toLowerCase().includes("environment")
-          ) || devices[devices.length - 1];
+        let selectedCamera;
+        if (preferFront) {
+          selectedCamera =
+            devices.find((d) =>
+              d.label.toLowerCase().includes("front") ||
+              d.label.toLowerCase().includes("user")
+            ) || devices[0];
+        } else {
+          selectedCamera =
+            devices.find((d) =>
+              d.label.toLowerCase().includes("back") ||
+              d.label.toLowerCase().includes("rear") ||
+              d.label.toLowerCase().includes("environment")
+            ) || devices[devices.length - 1];
+        }
 
         return scanner.start(
-          backCamera.id,
+          selectedCamera.id,
           {
-            fps: 10,
+            fps,
             qrbox: { width: 250, height: 250 },
             aspectRatio: 1.0,
           },
@@ -95,7 +106,7 @@ export function QRScanner() {
         .then(() => scannerRef.current?.clear())
         .catch(() => {});
     };
-  }, [handleQRCode]);
+  }, [handleQRCode, settings.scanSpeed, settings.preferFrontCamera]);
 
   const handleClose = () => {
     setScannedItem(null);

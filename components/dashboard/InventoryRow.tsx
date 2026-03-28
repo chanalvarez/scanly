@@ -7,14 +7,18 @@ import type { InventoryItem } from "@/types/inventory";
 
 interface InventoryRowProps {
   item: InventoryItem;
+  onClick: (item: InventoryItem) => void;
 }
 
-export function InventoryRow({ item }: InventoryRowProps) {
+export function InventoryRow({ item, onClick }: InventoryRowProps) {
   const { settings } = useSettings();
   const isLowStock = item.stock_count < settings.lowStockThreshold;
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors active:bg-accent">
+    <button
+      onClick={() => onClick(item)}
+      className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors active:bg-accent hover:bg-accent/50"
+    >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="truncate font-medium text-foreground">{item.name}</p>
@@ -25,12 +29,12 @@ export function InventoryRow({ item }: InventoryRowProps) {
           )}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          SKU: {item.sku} &middot; ${item.price.toFixed(2)}
+          SKU: {item.sku} &middot; ₱{item.price.toFixed(2)}
         </p>
       </div>
       <div className="shrink-0">
         <StockBar count={item.stock_count} threshold={settings.lowStockThreshold} />
       </div>
-    </div>
+    </button>
   );
 }

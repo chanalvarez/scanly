@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { InventoryList } from "@/components/dashboard/InventoryList";
 import type { InventoryItem } from "@/types/inventory";

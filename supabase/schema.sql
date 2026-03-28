@@ -39,6 +39,9 @@ create policy "Public can insert inventory"
 create policy "Public can update inventory"
   on inventory for update using (true);
 
+-- Enable real-time so the dashboard updates live across all connected staff
+alter publication supabase_realtime add table inventory;
+
 -- Sample data
 insert into inventory (name, sku, qr_code, stock_count, price) values
   ('Wireless Mouse',     'WM-001', 'PROD-WM-001', 15, 29.99),

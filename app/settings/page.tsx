@@ -1,16 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Settings,
-  Wifi,
-  Bell,
-  Smartphone,
-  Camera,
-  Zap,
-  RefreshCw,
-  CheckCircle2,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings, Wifi, Bell, RefreshCw, CheckCircle2, WifiOff, CloudUpload } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -18,21 +9,34 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useSettings } from "@/lib/use-settings";
+import { getQueue, flushQueue } from "@/lib/offline-queue";
 import type { InventoryItem } from "@/types/inventory";
-
-const SPEED_OPTIONS: { label: string; value: "slow" | "normal" | "fast"; fps: number }[] = [
-  { label: "Slow", value: "slow", fps: 5 },
-  { label: "Normal", value: "normal", fps: 10 },
-  { label: "Fast", value: "fast", fps: 20 },
-];
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings();
   const [syncing, setSyncing] = useState(false);
-  const [lastSynced, setLastSynced] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("scanly-last-synced");
-  });
+  const [pendingCount, setPendingCount] = useState(0);
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingCount(getQueue().length);
+    setIsOnline(navigator.onLine);
+    setLastSynced(localStorage.getItem("scanly-last-synced"));
+
+    const updateQueue = () => setPendingCount(getQueue().length);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("scanly-queue-change", updateQueue);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("scanly-queue-change", updateQueue);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   const syncOfflineCache = async () => {
     if (!isSupabaseConfigured) {
@@ -59,6 +63,17 @@ export default function SettingsPage() {
     toast.success(`${data.length} items cached for offline use`);
   };
 
+  const handlePendingSync = async () => {
+    if (syncing || !isOnline) return;
+    setSyncing(true);
+    const { synced, failed } = await flushQueue();
+    setSyncing(false);
+
+    if (synced > 0) toast.success(`${synced} pending change${synced > 1 ? "s" : ""} synced`);
+    if (failed > 0) toast.error(`${failed} changes failed — will retry when online`);
+    if (synced === 0 && failed === 0) toast.info("No pending changes to sync");
+  };
+
   const handleOfflineToggle = async (checked: boolean) => {
     updateSettings({ offlineMode: checked });
     if (checked) {
@@ -82,7 +97,45 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground">Inventory Manager v0.1.0</p>
         </div>
+        <div className="ml-auto">
+          <Badge variant={isOnline ? "success" : "outline"} className="gap-1">
+            {isOnline ? (
+              <><CheckCircle2 className="h-3 w-3" /> Online</>
+            ) : (
+              <><WifiOff className="h-3 w-3" /> Offline</>
+            )}
+          </Badge>
+        </div>
       </div>
+
+      {/* Pending changes */}
+      {pendingCount > 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <CloudUpload className="h-5 w-5 text-amber-400" />
+              <div>
+                <p className="font-medium text-amber-400">
+                  {pendingCount} pending change{pendingCount > 1 ? "s" : ""}
+                </p>
+                <p className="text-xs text-amber-400/70">
+                  {isOnline ? "Ready to sync" : "Waiting for internet connection"}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+              onClick={handlePendingSync}
+              disabled={syncing || !isOnline}
+            >
+              <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Syncing…" : "Sync now"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Offline Mode */}
       <Card>
@@ -97,9 +150,9 @@ export default function SettingsPage() {
         <CardContent className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Cache inventory locally</p>
+              <p className="font-medium">Work without internet</p>
               <p className="text-xs text-muted-foreground">
-                Access your inventory without internet
+                Changes are saved locally and synced when back online
               </p>
             </div>
             <Switch
@@ -113,7 +166,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 <p className="text-xs text-muted-foreground">
-                  {lastSynced ? `Last synced at ${lastSynced}` : "Not yet synced"}
+                  {lastSynced ? `Inventory cached at ${lastSynced}` : "Not yet cached"}
                 </p>
               </div>
               <Button
@@ -124,10 +177,15 @@ export default function SettingsPage() {
                 disabled={syncing}
               >
                 <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} />
-                Sync now
+                Refresh cache
               </Button>
             </div>
           )}
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            When offline mode is on, all stock changes (via scanner or editing) are queued and automatically
+            uploaded the moment internet is restored.
+          </p>
         </CardContent>
       </Card>
 
@@ -154,25 +212,22 @@ export default function SettingsPage() {
             </Badge>
           </div>
 
-          {/* Threshold slider */}
-          <div className="flex flex-col gap-2">
-            <input
-              type="range"
-              min={1}
-              max={20}
-              value={settings.lowStockThreshold}
-              onChange={(e) =>
-                updateSettings({ lowStockThreshold: parseInt(e.target.value) })
-              }
-              className="w-full accent-primary"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>1</span>
-              <span>5</span>
-              <span>10</span>
-              <span>15</span>
-              <span>20</span>
-            </div>
+          <input
+            type="range"
+            min={1}
+            max={20}
+            value={settings.lowStockThreshold}
+            onChange={(e) =>
+              updateSettings({ lowStockThreshold: parseInt(e.target.value) })
+            }
+            className="w-full accent-primary"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>1</span>
+            <span>5</span>
+            <span>10</span>
+            <span>15</span>
+            <span>20</span>
           </div>
 
           <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2">
@@ -184,74 +239,6 @@ export default function SettingsPage() {
               </span>{" "}
               will show a Low Stock badge
             </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Scanner Settings */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <Smartphone className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-              Scanner Settings
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {/* Camera preference */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Camera className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium">Front camera</p>
-                <p className="text-xs text-muted-foreground">
-                  Use front camera instead of rear
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={settings.preferFrontCamera}
-              onCheckedChange={(checked) => {
-                updateSettings({ preferFrontCamera: checked });
-                toast.info(
-                  checked ? "Front camera selected" : "Rear camera selected",
-                  { description: "Takes effect next time you open the scanner" }
-                );
-              }}
-            />
-          </div>
-
-          <div className="h-px bg-border" />
-
-          {/* Scan speed */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-muted-foreground" />
-              <p className="font-medium">Scan speed</p>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Faster scanning uses more battery
-            </p>
-            <div className="mt-1 grid grid-cols-3 gap-2">
-              {SPEED_OPTIONS.map(({ label, value, fps }) => (
-                <button
-                  key={value}
-                  onClick={() => {
-                    updateSettings({ scanSpeed: value });
-                    toast.info(`Scan speed set to ${label}`);
-                  }}
-                  className={`flex flex-col items-center gap-0.5 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
-                    settings.scanSpeed === value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-secondary text-muted-foreground"
-                  }`}
-                >
-                  {label}
-                  <span className="text-[10px] font-normal opacity-70">{fps} fps</span>
-                </button>
-              ))}
-            </div>
           </div>
         </CardContent>
       </Card>

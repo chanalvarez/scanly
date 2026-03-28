@@ -7,17 +7,16 @@ import { supabase } from "@/lib/supabase";
 import { ScanSuccessAnimation } from "@/components/scanner/ScanSuccessAnimation";
 import { ProductCardOverlay } from "@/components/scanner/ProductCardOverlay";
 import { Loader2, CameraOff } from "lucide-react";
-import { useSettings, SCAN_SPEED_FPS } from "@/lib/use-settings";
 import type { InventoryItem } from "@/types/inventory";
 
 const SCANNER_ID = "html5qr-scanner";
 const DEBOUNCE_MS = 2000;
+const SCAN_FPS = 20;
 
 export function QRScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { settings } = useSettings();
 
   const [isStarted, setIsStarted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -52,8 +51,6 @@ export function QRScanner() {
   useEffect(() => {
     const scanner = new Html5Qrcode(SCANNER_ID);
     scannerRef.current = scanner;
-    const fps = SCAN_SPEED_FPS[settings.scanSpeed];
-    const preferFront = settings.preferFrontCamera;
 
     Html5Qrcode.getCameras()
       .then((devices) => {
@@ -62,39 +59,24 @@ export function QRScanner() {
           return;
         }
 
-        let selectedCamera;
-        if (preferFront) {
-          selectedCamera =
-            devices.find((d) =>
-              d.label.toLowerCase().includes("front") ||
-              d.label.toLowerCase().includes("user")
-            ) || devices[0];
-        } else {
-          selectedCamera =
-            devices.find((d) =>
-              d.label.toLowerCase().includes("back") ||
-              d.label.toLowerCase().includes("rear") ||
-              d.label.toLowerCase().includes("environment")
-            ) || devices[devices.length - 1];
-        }
+        // Always prefer rear/back camera
+        const camera =
+          devices.find((d) =>
+            d.label.toLowerCase().includes("back") ||
+            d.label.toLowerCase().includes("rear") ||
+            d.label.toLowerCase().includes("environment")
+          ) || devices[devices.length - 1];
 
         return scanner.start(
-          selectedCamera.id,
-          {
-            fps,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-          },
+          camera.id,
+          { fps: SCAN_FPS, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
           handleQRCode,
           undefined
         );
       })
-      .then(() => {
-        setIsStarted(true);
-      })
+      .then(() => setIsStarted(true))
       .catch((err: unknown) => {
-        const msg =
-          err instanceof Error ? err.message : "Camera access denied.";
+        const msg = err instanceof Error ? err.message : "Camera access denied.";
         setCameraError(msg);
         toast.error("Could not start camera: " + msg);
       });
@@ -106,7 +88,7 @@ export function QRScanner() {
         .then(() => scannerRef.current?.clear())
         .catch(() => {});
     };
-  }, [handleQRCode, settings.scanSpeed, settings.preferFrontCamera]);
+  }, [handleQRCode]);
 
   const handleClose = () => {
     setScannedItem(null);
@@ -114,18 +96,14 @@ export function QRScanner() {
   };
 
   const handleStockChange = (newCount: number) => {
-    setScannedItem((prev) =>
-      prev ? { ...prev, stock_count: newCount } : null
-    );
+    setScannedItem((prev) => (prev ? { ...prev, stock_count: newCount } : null));
   };
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-background">
-      {/* Viewfinder */}
       <div className="relative w-full flex-1">
         <div id={SCANNER_ID} className="h-full w-full" />
 
-        {/* Loading overlay */}
         {!isStarted && !cameraError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -133,7 +111,6 @@ export function QRScanner() {
           </div>
         )}
 
-        {/* Camera error */}
         {cameraError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background px-8 text-center">
             <CameraOff className="h-12 w-12 text-muted-foreground/40" />
@@ -142,23 +119,18 @@ export function QRScanner() {
           </div>
         )}
 
-        {/* Scan frame overlay */}
         {isStarted && !scannedItem && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="relative h-64 w-64">
-              {/* Corner markers */}
-              {["top-0 left-0", "top-0 right-0", "bottom-0 left-0", "bottom-0 right-0"].map(
+              {(["top-0 left-0", "top-0 right-0", "bottom-0 left-0", "bottom-0 right-0"] as const).map(
                 (pos, i) => (
                   <div
                     key={i}
                     className={`absolute h-8 w-8 ${pos} border-primary ${
-                      i === 0
-                        ? "border-t-2 border-l-2 rounded-tl-md"
-                        : i === 1
-                        ? "border-t-2 border-r-2 rounded-tr-md"
-                        : i === 2
-                        ? "border-b-2 border-l-2 rounded-bl-md"
-                        : "border-b-2 border-r-2 rounded-br-md"
+                      i === 0 ? "border-t-2 border-l-2 rounded-tl-md"
+                      : i === 1 ? "border-t-2 border-r-2 rounded-tr-md"
+                      : i === 2 ? "border-b-2 border-l-2 rounded-bl-md"
+                      : "border-b-2 border-r-2 rounded-br-md"
                     }`}
                   />
                 )
@@ -175,7 +147,6 @@ export function QRScanner() {
         />
       </div>
 
-      {/* Hint text */}
       {isStarted && !scannedItem && (
         <div className="px-6 py-4 text-center">
           <p className="text-sm text-muted-foreground">

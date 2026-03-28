@@ -136,7 +136,7 @@ export function AddItemModal({ onItemAdded }: AddItemModalProps) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="price">Price ($)</Label>
+              <Label htmlFor="price">Price (₱)</Label>
               <Input
                 id="price"
                 name="price"

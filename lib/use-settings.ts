@@ -5,15 +5,11 @@ import { useState, useEffect, useCallback } from "react";
 export interface AppSettings {
   offlineMode: boolean;
   lowStockThreshold: number;
-  preferFrontCamera: boolean;
-  scanSpeed: "slow" | "normal" | "fast";
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  offlineMode: true,
+  offlineMode: false,
   lowStockThreshold: 5,
-  preferFrontCamera: false,
-  scanSpeed: "normal",
 };
 
 const STORAGE_KEY = "scanly-settings";
@@ -41,7 +37,6 @@ export function useSettings() {
 
   useEffect(() => {
     setSettings(loadSettings());
-
     const handleChange = () => setSettings(loadSettings());
     window.addEventListener("scanly-settings-change", handleChange);
     return () => window.removeEventListener("scanly-settings-change", handleChange);
@@ -58,9 +53,3 @@ export function useSettings() {
 
   return { settings, updateSettings };
 }
-
-export const SCAN_SPEED_FPS: Record<AppSettings["scanSpeed"], number> = {
-  slow: 5,
-  normal: 10,
-  fast: 20,
-};

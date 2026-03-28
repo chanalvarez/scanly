@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Minus, Plus, X, Loader2, Package } from "lucide-react";
+import { Minus, Plus, X, Loader2, Package, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { addToQueue } from "@/lib/offline-queue";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +32,26 @@ export function ProductCardOverlay({
     const newCount = Math.max(0, item.stock_count + delta);
     if (newCount === item.stock_count) return;
 
+    // Optimistically update local state immediately
+    onStockChange(newCount);
     setUpdating(true);
+
+    // If offline mode is on or no internet, queue the change
+    if (settings.offlineMode || !navigator.onLine) {
+      addToQueue({
+        itemId: item.id,
+        itemName: item.name,
+        payload: { stock_count: newCount },
+        timestamp: new Date().toISOString(),
+      });
+      setUpdating(false);
+      toast.info("Saved offline", {
+        description: "Will sync automatically when back online",
+        icon: <WifiOff className="h-4 w-4" />,
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from("inventory")
       .update({ stock_count: newCount, updated_at: new Date().toISOString() })
@@ -40,15 +60,22 @@ export function ProductCardOverlay({
     setUpdating(false);
 
     if (error) {
-      toast.error("Failed to update stock.");
+      // Network failed — save to queue anyway
+      addToQueue({
+        itemId: item.id,
+        itemName: item.name,
+        payload: { stock_count: newCount },
+        timestamp: new Date().toISOString(),
+      });
+      toast.info("Saved offline", {
+        description: "Will sync automatically when back online",
+        icon: <WifiOff className="h-4 w-4" />,
+      });
       return;
     }
 
-    onStockChange(newCount);
     toast.success(
-      delta > 0
-        ? `Stock increased to ${newCount}`
-        : `Stock decreased to ${newCount}`
+      delta > 0 ? `Stock increased to ${newCount}` : `Stock decreased to ${newCount}`
     );
   };
 
@@ -56,7 +83,6 @@ export function ProductCardOverlay({
     <AnimatePresence>
       {item && (
         <>
-          {/* Backdrop */}
           <motion.div
             className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -65,7 +91,6 @@ export function ProductCardOverlay({
             onClick={onClose}
           />
 
-          {/* Card */}
           <motion.div
             className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-6"
             initial={{ y: "100%", opacity: 0 }}
@@ -75,7 +100,6 @@ export function ProductCardOverlay({
           >
             <Card className="overflow-hidden border-border">
               <CardContent className="p-5">
-                {/* Close button */}
                 <div className="mb-4 flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -83,9 +107,7 @@ export function ProductCardOverlay({
                     </div>
                     <div>
                       <h2 className="font-semibold leading-tight">{item.name}</h2>
-                      <p className="text-xs text-muted-foreground">
-                        SKU: {item.sku}
-                      </p>
+                      <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                     </div>
                   </div>
                   <button
@@ -96,11 +118,10 @@ export function ProductCardOverlay({
                   </button>
                 </div>
 
-                {/* Price & Stock status */}
                 <div className="mb-5 flex items-center justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">Unit Price</p>
-                    <p className="text-xl font-bold">${item.price.toFixed(2)}</p>
+                    <p className="text-xl font-bold">₱{item.price.toFixed(2)}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {item.stock_count < threshold && (
@@ -123,7 +144,6 @@ export function ProductCardOverlay({
                   </div>
                 </div>
 
-                {/* Stock controls */}
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"

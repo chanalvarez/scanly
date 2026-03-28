@@ -52,3 +52,20 @@ html {
 body {
   overscroll-behavior: none;
 }
+
+/* Strip out html5-qrcode's built-in blue scanning box and shaded overlay.
+   We render our own clean white corner markers in QRScanner.tsx instead. */
+#html5qr-scanner__scan_region > div,
+#html5qr-scanner__scan_region img {
+  display: none !important;
+}
+
+#html5qr-scanner__scan_region {
+  position: relative;
+}
+
+#html5qr-scanner video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}

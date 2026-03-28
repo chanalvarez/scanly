@@ -111,11 +111,11 @@ export function AddItemModal({ onItemAdded }: AddItemModalProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="qr_code">QR Code String *</Label>
+            <Label htmlFor="qr_code">Barcode *</Label>
             <Input
               id="qr_code"
               name="qr_code"
-              placeholder="e.g. PROD-WM-001-2024"
+              placeholder="e.g. 4901234567890"
               value={form.qr_code}
               onChange={handleChange}
               required

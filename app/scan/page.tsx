@@ -23,7 +23,7 @@ export default function ScanPage() {
       <div className="px-4 pt-6 pb-3">
         <h1 className="text-2xl font-bold tracking-tight">Scanner</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Scan a QR code to manage stock
+          Scan a barcode to manage stock
         </p>
       </div>
 

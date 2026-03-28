@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { ScanSuccessAnimation } from "@/components/scanner/ScanSuccessAnimation";
@@ -13,6 +13,19 @@ const SCANNER_ID = "html5qr-scanner";
 const DEBOUNCE_MS = 2000;
 const SCAN_FPS = 20;
 
+// All major retail barcode formats + QR as fallback
+const SUPPORTED_FORMATS = [
+  Html5QrcodeSupportedFormats.EAN_13,       // standard retail (most common)
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,        // North American retail
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_128,     // warehouse / logistics
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_93,
+  Html5QrcodeSupportedFormats.ITF,          // cartons / outer packaging
+  Html5QrcodeSupportedFormats.QR_CODE,      // QR as fallback
+];
+
 export function QRScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScannedRef = useRef<string | null>(null);
@@ -23,7 +36,7 @@ export function QRScanner() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [scannedItem, setScannedItem] = useState<InventoryItem | null>(null);
 
-  const handleQRCode = useCallback(async (decodedText: string) => {
+  const handleBarcode = useCallback(async (decodedText: string) => {
     if (lastScannedRef.current === decodedText) return;
     lastScannedRef.current = decodedText;
 
@@ -35,11 +48,11 @@ export function QRScanner() {
     const { data, error } = await supabase
       .from("inventory")
       .select("*")
-      .eq("qr_code", decodedText)
+      .eq("qr_code", decodedText)   // column still named qr_code in DB — stores the barcode value
       .single();
 
     if (error || !data) {
-      toast.error(`No product found for QR: "${decodedText}"`);
+      toast.error(`No product found for barcode: "${decodedText}"`);
       return;
     }
 
@@ -49,7 +62,7 @@ export function QRScanner() {
   }, []);
 
   useEffect(() => {
-    const scanner = new Html5Qrcode(SCANNER_ID);
+    const scanner = new Html5Qrcode(SCANNER_ID, { formatsToSupport: SUPPORTED_FORMATS, verbose: false });
     scannerRef.current = scanner;
 
     Html5Qrcode.getCameras()
@@ -59,7 +72,6 @@ export function QRScanner() {
           return;
         }
 
-        // Always prefer rear/back camera
         const camera =
           devices.find((d) =>
             d.label.toLowerCase().includes("back") ||
@@ -69,8 +81,13 @@ export function QRScanner() {
 
         return scanner.start(
           camera.id,
-          { fps: SCAN_FPS, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          handleQRCode,
+          {
+            fps: SCAN_FPS,
+            // Wide rectangle suits barcodes; tall enough for QR fallback
+            qrbox: { width: 300, height: 120 },
+            aspectRatio: 1.7,   // landscape-ish to fill a phone screen naturally
+          },
+          handleBarcode,
           undefined
         );
       })
@@ -88,7 +105,7 @@ export function QRScanner() {
         .then(() => scannerRef.current?.clear())
         .catch(() => {});
     };
-  }, [handleQRCode]);
+  }, [handleBarcode]);
 
   const handleClose = () => {
     setScannedItem(null);
@@ -119,22 +136,26 @@ export function QRScanner() {
           </div>
         )}
 
+        {/* Wide barcode scan frame */}
         {isStarted && !scannedItem && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="relative h-64 w-64">
+            <div className="relative h-28 w-72">
+              {/* Corner markers — wide rectangle for barcodes */}
               {(["top-0 left-0", "top-0 right-0", "bottom-0 left-0", "bottom-0 right-0"] as const).map(
                 (pos, i) => (
                   <div
                     key={i}
-                    className={`absolute h-8 w-8 ${pos} border-primary ${
-                      i === 0 ? "border-t-2 border-l-2 rounded-tl-md"
-                      : i === 1 ? "border-t-2 border-r-2 rounded-tr-md"
-                      : i === 2 ? "border-b-2 border-l-2 rounded-bl-md"
-                      : "border-b-2 border-r-2 rounded-br-md"
+                    className={`absolute h-6 w-8 ${pos} border-white ${
+                      i === 0 ? "border-t-2 border-l-2 rounded-tl-sm"
+                      : i === 1 ? "border-t-2 border-r-2 rounded-tr-sm"
+                      : i === 2 ? "border-b-2 border-l-2 rounded-bl-sm"
+                      : "border-b-2 border-r-2 rounded-br-sm"
                     }`}
                   />
                 )
               )}
+              {/* Horizontal scan line animation */}
+              <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/40" />
             </div>
           </div>
         )}
@@ -150,7 +171,7 @@ export function QRScanner() {
       {isStarted && !scannedItem && (
         <div className="px-6 py-4 text-center">
           <p className="text-sm text-muted-foreground">
-            Point the camera at a QR code to look up a product
+            Align the barcode within the frame to scan
           </p>
         </div>
       )}

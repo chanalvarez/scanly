@@ -163,7 +163,7 @@ export function EditItemModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="edit-qr">QR Code String *</Label>
+            <Label htmlFor="edit-qr">Barcode *</Label>
             <Input
               id="edit-qr"
               name="qr_code"

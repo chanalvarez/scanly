@@ -36,25 +36,45 @@ export function InventoryList({ initialItems }: InventoryListProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const { settings } = useSettings();
 
-  // Apply any queued offline changes to local state so staff sees them immediately
+  // Fetch fresh data from Supabase every time the dashboard mounts.
+  // This ensures stock changes made in the scanner (on another page) are
+  // always reflected when the user navigates back — regardless of router cache.
   useEffect(() => {
-    const queue = getQueue();
-    if (queue.length === 0) return;
-    setPendingCount(queue.length);
-    setItems((prev) =>
-      prev.map((item) => {
-        const queued = queue.find((c) => c.itemId === item.id);
-        if (!queued) return item;
-        return { ...item, ...queued.payload };
-      })
-    );
-  }, []);
+    if (!isSupabaseConfigured) return;
 
-  // Keep pending count in sync with queue changes
+    supabase
+      .from("inventory")
+      .select("*")
+      .order("name")
+      .then(({ data }) => {
+        if (!data) return;
+        // Overlay any pending offline changes on top of the fresh server data
+        const queue = getQueue();
+        setPendingCount(queue.length);
+        const merged = (data as InventoryItem[]).map((item) => {
+          const queued = queue.find((c) => c.itemId === item.id);
+          return queued ? { ...item, ...queued.payload } : item;
+        });
+        setItems(merged);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep pending count badge in sync whenever the queue changes
   useEffect(() => {
     const update = () => setPendingCount(getQueue().length);
     window.addEventListener("scanly-queue-change", update);
     return () => window.removeEventListener("scanly-queue-change", update);
+  }, []);
+
+  // Also refresh the list data whenever a queued change is flushed successfully
+  useEffect(() => {
+    const handleSync = async () => {
+      if (!isSupabaseConfigured) return;
+      const { data } = await supabase.from("inventory").select("*").order("name");
+      if (data) setItems(data as InventoryItem[]);
+    };
+    window.addEventListener("scanly-sync-complete", handleSync);
+    return () => window.removeEventListener("scanly-sync-complete", handleSync);
   }, []);
 
   // Supabase real-time subscription — reflects changes from scanner or other staff

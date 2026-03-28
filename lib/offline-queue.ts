@@ -74,6 +74,10 @@ export async function flushQueue(): Promise<{ synced: number; failed: number }> 
     window.dispatchEvent(new Event("scanly-queue-change"));
   }
 
+  if (synced > 0) {
+    window.dispatchEvent(new Event("scanly-sync-complete"));
+  }
+
   return { synced, failed: failed.length };
 }
 

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { toast } from "sonner";
+import { isDemo } from "@/lib/is-demo";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
 import { ScanSuccessAnimation } from "@/components/scanner/ScanSuccessAnimation";
 import { ProductCardOverlay } from "@/components/scanner/ProductCardOverlay";
 import { Loader2, CameraOff } from "lucide-react";
@@ -27,6 +29,7 @@ const SUPPORTED_FORMATS = [
 ];
 
 export function QRScanner() {
+  const demoMode = isDemo();
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScannedRef = useRef<string | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -35,6 +38,7 @@ export function QRScanner() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [scannedItem, setScannedItem] = useState<InventoryItem | null>(null);
+  const [demoSample, setDemoSample] = useState<InventoryItem | null>(null);
 
   const handleBarcode = useCallback(async (decodedText: string) => {
     if (lastScannedRef.current === decodedText) return;
@@ -62,6 +66,21 @@ export function QRScanner() {
   }, []);
 
   useEffect(() => {
+    if (!demoMode) return;
+    supabase
+      .from("inventory")
+      .select("*")
+      .order("name", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setDemoSample(data as InventoryItem);
+      });
+  }, [demoMode]);
+
+  useEffect(() => {
+    if (demoMode) return;
+
     const scanner = new Html5Qrcode(SCANNER_ID, { formatsToSupport: SUPPORTED_FORMATS, verbose: false });
     scannerRef.current = scanner;
 
@@ -105,7 +124,17 @@ export function QRScanner() {
         .then(() => scannerRef.current?.clear())
         .catch(() => {});
     };
-  }, [handleBarcode]);
+  }, [handleBarcode, demoMode]);
+
+  const handleDemoSimulateScan = () => {
+    if (!demoSample) {
+      toast.error("No sample products in this workspace.");
+      return;
+    }
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 1200);
+    setScannedItem(demoSample);
+  };
 
   const handleClose = () => {
     setScannedItem(null);
@@ -115,6 +144,33 @@ export function QRScanner() {
   const handleStockChange = (newCount: number) => {
     setScannedItem((prev) => (prev ? { ...prev, stock_count: newCount } : null));
   };
+
+  if (demoMode) {
+    return (
+      <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-background">
+        <div className="relative flex w-full flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+          <CameraOff className="h-12 w-12 text-muted-foreground/50" />
+          <div>
+            <p className="font-medium text-foreground">Camera off in demo mode</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Preview the scan flow with sample inventory data — no camera or barcode
+              hardware required.
+            </p>
+          </div>
+          <Button size="lg" className="rounded-xl" onClick={handleDemoSimulateScan}>
+            Simulate barcode scan
+          </Button>
+        </div>
+
+        <ScanSuccessAnimation show={showSuccess} />
+        <ProductCardOverlay
+          item={scannedItem}
+          onClose={handleClose}
+          onStockChange={handleStockChange}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-background">

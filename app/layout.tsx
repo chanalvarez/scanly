@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/layout/BottomNav";
+import { DemoGuard } from "@/components/DemoGuard";
 import { InstallPrompt } from "@/components/layout/InstallPrompt";
 import { Toaster } from "sonner";
 
@@ -39,10 +40,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <div className="mx-auto min-h-screen max-w-md">
-          <main className="pb-16">{children}</main>
-          <BottomNav />
-        </div>
+        <DemoGuard>
+          <div className="mx-auto min-h-screen max-w-md">
+            <main className="pb-16">{children}</main>
+            <BottomNav />
+          </div>
+        </DemoGuard>
         <InstallPrompt />
         <Toaster
           position="top-center"

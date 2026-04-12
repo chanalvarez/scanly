@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useDemoBlockAction } from "@/components/DemoGuard";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useSettings } from "@/lib/use-settings";
 import { getQueue, flushQueue } from "@/lib/offline-queue";
@@ -14,6 +15,7 @@ import type { InventoryItem } from "@/types/inventory";
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings();
+  const blockIfDemo = useDemoBlockAction();
   const [syncing, setSyncing] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
@@ -64,6 +66,7 @@ export default function SettingsPage() {
   };
 
   const handlePendingSync = async () => {
+    if (blockIfDemo()) return;
     if (syncing || !isOnline) return;
     setSyncing(true);
     const { synced, failed } = await flushQueue();

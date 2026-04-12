@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Minus, Plus, X, Loader2, Package, WifiOff } from "lucide-react";
 import { toast } from "sonner";
+import { useDemoBlockAction } from "@/components/DemoGuard";
 import { supabase } from "@/lib/supabase";
 import { addToQueue } from "@/lib/offline-queue";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,11 @@ export function ProductCardOverlay({
   const [updating, setUpdating] = useState(false);
   const { settings } = useSettings();
   const threshold = settings.lowStockThreshold;
+  const blockIfDemo = useDemoBlockAction();
 
   const updateStock = async (delta: number) => {
     if (!item) return;
+    if (blockIfDemo()) return;
     const newCount = Math.max(0, item.stock_count + delta);
     if (newCount === item.stock_count) return;
 

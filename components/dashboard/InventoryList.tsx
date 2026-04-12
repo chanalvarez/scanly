@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Package, AlertCircle, WifiOff, RefreshCw } from "lucide-react";
+import { Package, AlertCircle, WifiOff, RefreshCw, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { SearchBar } from "@/components/dashboard/SearchBar";
 import { InventoryRow } from "@/components/dashboard/InventoryRow";
@@ -9,11 +9,16 @@ import { AddItemModal } from "@/components/dashboard/AddItemModal";
 import { EditItemModal } from "@/components/dashboard/EditItemModal";
 import { useSettings } from "@/lib/use-settings";
 import { getQueue, flushQueue } from "@/lib/offline-queue";
+import { useDemoBlockAction } from "@/components/DemoGuard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isDemo } from "@/lib/is-demo";
 import type { InventoryItem } from "@/types/inventory";
+import type { ScanHistoryEntry } from "@/types/scan-history";
 
 interface InventoryListProps {
   initialItems: InventoryItem[];
+  demoScanHistory?: ScanHistoryEntry[];
 }
 
 function StatCard({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
@@ -27,7 +32,10 @@ function StatCard({ label, value, danger }: { label: string; value: string; dang
   );
 }
 
-export function InventoryList({ initialItems }: InventoryListProps) {
+export function InventoryList({
+  initialItems,
+  demoScanHistory = [],
+}: InventoryListProps) {
   const [items, setItems] = useState<InventoryItem[]>(initialItems);
   const [search, setSearch] = useState("");
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
@@ -35,6 +43,8 @@ export function InventoryList({ initialItems }: InventoryListProps) {
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const { settings } = useSettings();
+  const blockIfDemo = useDemoBlockAction();
+  const demoUi = process.env.NEXT_PUBLIC_IS_DEMO === "true";
 
   // Fetch fresh data from Supabase every time the dashboard mounts.
   // This ensures stock changes made in the scanner (on another page) are
@@ -118,6 +128,7 @@ export function InventoryList({ initialItems }: InventoryListProps) {
   // Auto-sync queue when internet comes back online
   useEffect(() => {
     const handleOnline = async () => {
+      if (isDemo()) return;
       const queue = getQueue();
       if (queue.length === 0) return;
       toast.info(`Back online — syncing ${queue.length} pending change${queue.length > 1 ? "s" : ""}…`);
@@ -141,6 +152,7 @@ export function InventoryList({ initialItems }: InventoryListProps) {
   }, []);
 
   const handleManualSync = useCallback(async () => {
+    if (blockIfDemo()) return;
     if (isSyncing) return;
     setIsSyncing(true);
     const { synced, failed } = await flushQueue();
@@ -152,7 +164,7 @@ export function InventoryList({ initialItems }: InventoryListProps) {
     if (failed > 0) toast.error(`${failed} changes failed to sync`);
     if (synced === 0 && failed === 0) toast.info("Nothing to sync");
     setIsSyncing(false);
-  }, [isSyncing]);
+  }, [isSyncing, blockIfDemo]);
 
   const handleItemAdded = (newItem: InventoryItem) => {
     setItems((prev) =>
@@ -191,6 +203,11 @@ export function InventoryList({ initialItems }: InventoryListProps) {
           <p className="mt-0.5 text-sm text-muted-foreground">
             {items.length} {items.length === 1 ? "product" : "products"} total
           </p>
+          {demoUi && (
+            <p className="mt-1 text-xs font-medium text-primary/90">
+              Demo workspace · Portfolio preview
+            </p>
+          )}
         </div>
         {lowStockCount > 0 && (
           <div className="flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400">
@@ -227,6 +244,36 @@ export function InventoryList({ initialItems }: InventoryListProps) {
           <StatCard label="Total Value" value={`₱${totalValue.toFixed(0)}`} />
           <StatCard label="Low Stock" value={lowStockCount.toString()} danger={lowStockCount > 0} />
         </div>
+      )}
+
+      {demoUi && demoScanHistory.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <CardTitle className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                Recent scans (simulated)
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2 pt-0">
+            {demoScanHistory.map((row) => (
+              <div
+                key={row.id}
+                className="rounded-lg border border-border bg-card/50 px-3 py-2 text-sm"
+              >
+                <p className="font-medium leading-tight">{row.document_label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {row.product_name ?? "Unknown item"}
+                  {row.barcode ? ` · ${row.barcode}` : ""}
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground/80">
+                  {new Date(row.scanned_at).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {/* Search + Add */}

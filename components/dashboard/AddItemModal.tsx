@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useDemoBlockAction } from "@/components/DemoGuard";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ export function AddItemModal({ onItemAdded }: AddItemModalProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
+  const blockIfDemo = useDemoBlockAction();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -40,6 +42,7 @@ export function AddItemModal({ onItemAdded }: AddItemModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (blockIfDemo()) return;
     if (!form.name || !form.sku || !form.qr_code) {
       toast.error("Name, SKU, and QR string are required.");
       return;

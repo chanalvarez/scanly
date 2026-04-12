@@ -1,3 +1,4 @@
+import { isDemo } from "@/lib/is-demo";
 import { supabase } from "@/lib/supabase";
 
 export interface PendingChange {
@@ -48,6 +49,10 @@ export function clearQueue() {
 }
 
 export async function flushQueue(): Promise<{ synced: number; failed: number }> {
+  if (typeof window !== "undefined" && isDemo()) {
+    return { synced: 0, failed: 0 };
+  }
+
   const queue = getQueue();
   if (queue.length === 0) return { synced: 0, failed: 0 };
 

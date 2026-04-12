@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Loader2, Pencil, WifiOff } from "lucide-react";
 import { toast } from "sonner";
+import { useDemoBlockAction } from "@/components/DemoGuard";
 import { supabase } from "@/lib/supabase";
 import { addToQueue } from "@/lib/offline-queue";
 import { useSettings } from "@/lib/use-settings";
@@ -32,6 +33,7 @@ export function EditItemModal({
   onItemUpdated,
 }: EditItemModalProps) {
   const { settings } = useSettings();
+  const blockIfDemo = useDemoBlockAction();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -60,6 +62,7 @@ export function EditItemModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!item) return;
+    if (blockIfDemo()) return;
     if (!form.name || !form.sku || !form.qr_code) {
       toast.error("Name, SKU, and QR string are required.");
       return;

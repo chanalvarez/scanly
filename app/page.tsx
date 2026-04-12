@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isDemo } from "@/lib/is-demo";
 import { InventoryList } from "@/components/dashboard/InventoryList";
 import type { InventoryItem } from "@/types/inventory";
+import type { ScanHistoryEntry } from "@/types/scan-history";
 import { Terminal } from "lucide-react";
 
 async function getInventory(): Promise<InventoryItem[]> {
@@ -21,16 +23,38 @@ async function getInventory(): Promise<InventoryItem[]> {
   return data as InventoryItem[];
 }
 
+async function getDemoScanHistory(): Promise<ScanHistoryEntry[]> {
+  if (!isDemo() || !isSupabaseConfigured) return [];
+
+  const { data, error } = await supabase
+    .from("scan_history")
+    .select("*")
+    .order("scanned_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    return [];
+  }
+
+  return (data ?? []) as ScanHistoryEntry[];
+}
+
 export default async function DashboardPage() {
   if (!isSupabaseConfigured) {
     return <SetupPrompt />;
   }
 
-  const items = await getInventory();
+  const [items, demoScanHistory] = await Promise.all([
+    getInventory(),
+    getDemoScanHistory(),
+  ]);
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-6">
-      <InventoryList initialItems={items} />
+      <InventoryList
+        initialItems={items}
+        demoScanHistory={demoScanHistory}
+      />
     </div>
   );
 }

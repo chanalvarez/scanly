@@ -45,7 +45,15 @@ create policy "Public can update inventory"
   on inventory for update using (true);
 
 -- Enable real-time so the dashboard updates live across all connected staff
-alter publication supabase_realtime add table inventory;
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and tablename = 'inventory'
+  ) then
+    alter publication supabase_realtime add table inventory;
+  end if;
+end $$;
 
 -- Sample data
 insert into inventory (name, sku, qr_code, stock_count, price) values

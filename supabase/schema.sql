@@ -55,10 +55,11 @@ begin
   end if;
 end $$;
 
--- Sample data
+-- Sample data (skipped if already exists)
 insert into inventory (name, sku, qr_code, stock_count, price) values
   ('Wireless Mouse',     'WM-001', 'PROD-WM-001', 15, 29.99),
   ('Mechanical Keyboard','KB-001', 'PROD-KB-001',  3, 89.99),
   ('USB-C Hub',          'HB-001', 'PROD-HB-001',  8, 49.99),
   ('Monitor Stand',      'MS-001', 'PROD-MS-001',  1, 39.99),
-  ('Webcam HD',          'WC-001', 'PROD-WC-001', 22, 69.99);
+  ('Webcam HD',          'WC-001', 'PROD-WC-001', 22, 69.99)
+on conflict (sku) do nothing;

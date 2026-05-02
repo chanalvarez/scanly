@@ -22,6 +22,7 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists inventory_updated_at on inventory;
 create trigger inventory_updated_at
   before update on inventory
   for each row execute function update_updated_at_column();
@@ -30,6 +31,10 @@ create trigger inventory_updated_at
 alter table inventory enable row level security;
 
 -- Allow public read/write (adjust for your auth requirements)
+drop policy if exists "Public can read inventory"   on inventory;
+drop policy if exists "Public can insert inventory" on inventory;
+drop policy if exists "Public can update inventory" on inventory;
+
 create policy "Public can read inventory"
   on inventory for select using (true);
 

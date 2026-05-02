@@ -49,9 +49,9 @@ insert into inventory (name, sku, qr_code, stock_count, price) values
   ('Joy Dishwashing Liquid 250ml',     'DEMO-JY-021', '4800234567890',  18,  55.00),
   ('Baygon Multi-Insect Killer 600ml', 'DEMO-BG-022', '4800245678901',   1, 189.00)
 
-on conflict (sku)     do update set stock_count = excluded.stock_count, price = excluded.price
--- also handle barcode column uniqueness gracefully
-on conflict (qr_code) do update set stock_count = excluded.stock_count, price = excluded.price;
+on conflict (sku) do update set
+  stock_count = excluded.stock_count,
+  price       = excluded.price;
 
 -- ── Scan history table (portfolio demo feed) ─────────────────
 create table if not exists scan_history (

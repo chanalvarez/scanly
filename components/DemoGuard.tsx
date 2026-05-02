@@ -13,7 +13,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const FIVERR_URL = "https://www.fiverr.com/chanalvarez";
+const CONTACT_URL = "https://craydev.vercel.app/#contact";
 
 const BANNER_STYLE: CSSProperties = {
   background: "rgba(0,0,0,0.85)",
@@ -72,12 +72,12 @@ export function DemoGuard({ children }: { children: ReactNode }) {
           <span className="block opacity-90">This is a portfolio preview.</span>
         </p>
         <a
-          href={FIVERR_URL}
+          href={CONTACT_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="shrink-0 rounded-md bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/25"
         >
-          View on Fiverr
+          Contact Me
         </a>
       </header>
 
@@ -104,8 +104,9 @@ export function DemoGuard({ children }: { children: ReactNode }) {
                 Demo Restriction
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="text-sm text-muted-foreground">
-                This action is disabled in demo mode. Contact me to see the full
-                version.
+                This action is disabled in demo mode. To protect our active
+                clients and their data, certain features are restricted in this
+                preview. Contact me for more information.
               </DialogPrimitive.Description>
             </div>
 
@@ -117,11 +118,11 @@ export function DemoGuard({ children }: { children: ReactNode }) {
               </DialogPrimitive.Close>
               <Button type="button" asChild>
                 <a
-                  href={FIVERR_URL}
+                  href={CONTACT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Hire Me on Fiverr
+                  Contact Me
                 </a>
               </Button>
             </div>
